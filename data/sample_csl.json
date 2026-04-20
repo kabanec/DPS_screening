@@ -1,0 +1,150 @@
+{
+  "sources_used": [
+    "Specially Designated Nationals (SDN) - Treasury Department",
+    "Entity List (EL) - Bureau of Industry and Security",
+    "Denied Persons List (DPL) - Bureau of Industry and Security",
+    "Debarred List (DTC) - State Department",
+    "Sectoral Sanctions Identifications List (SSI) - Treasury Department"
+  ],
+  "results": [
+    {
+      "id": "SAMPLE-SDN-0001",
+      "name": "ACME Trading Company",
+      "alt_names": ["Acme Trading Co.", "ACME Trading", "Acme Trade Co"],
+      "source": "Specially Designated Nationals (SDN) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SDN",
+      "country": "IR",
+      "addresses": [
+        {"city": "Tehran", "country": "IR"}
+      ],
+      "programs": ["IRAN", "SDGT"],
+      "source_information_url": "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=00000",
+      "source_list_url": "https://home.treasury.gov/policy-issues/financial-sanctions/specially-designated-nationals-and-blocked-persons-list-sdn-human-readable-lists"
+    },
+    {
+      "id": "SAMPLE-SDN-0002",
+      "name": "North Korean Enterprises Ltd.",
+      "alt_names": ["NK Enterprises", "DPRK Enterprises"],
+      "source": "Specially Designated Nationals (SDN) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SDN",
+      "country": "KP",
+      "addresses": [
+        {"city": "Pyongyang", "country": "KP"}
+      ],
+      "programs": ["DPRK", "NPWMD"],
+      "source_information_url": "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=00001"
+    },
+    {
+      "id": "SAMPLE-SDN-0003",
+      "name": "Syrian Military Industries Establishment",
+      "alt_names": ["SMIE", "Syrian Military Industries"],
+      "source": "Specially Designated Nationals (SDN) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SDN",
+      "country": "SY",
+      "programs": ["SYRIA"],
+      "source_information_url": "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=00002"
+    },
+    {
+      "id": "SAMPLE-EL-0001",
+      "name": "Russian Federation Export Controls LLC",
+      "alt_names": ["RFEC", "Russia Export Controls"],
+      "source": "Entity List (EL) - Bureau of Industry and Security",
+      "type": "Entity",
+      "list_type": "EL",
+      "country": "RU",
+      "programs": ["Russia/Ukraine-Related Sanctions"],
+      "source_information_url": "https://www.bis.doc.gov/index.php/policy-guidance/lists-of-parties-of-concern/entity-list"
+    },
+    {
+      "id": "SAMPLE-EL-0002",
+      "name": "Huawei Technologies (sample)",
+      "alt_names": ["Huawei Sample Entity"],
+      "source": "Entity List (EL) - Bureau of Industry and Security",
+      "type": "Entity",
+      "list_type": "EL",
+      "country": "CN",
+      "programs": ["National Security"],
+      "source_information_url": "https://www.bis.doc.gov/index.php/policy-guidance/lists-of-parties-of-concern/entity-list"
+    },
+    {
+      "id": "SAMPLE-SDN-0004",
+      "name": "Hamas Finance Committee",
+      "alt_names": ["HFC"],
+      "source": "Specially Designated Nationals (SDN) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SDN",
+      "country": null,
+      "programs": ["SDGT", "FTO"],
+      "source_information_url": "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=00003"
+    },
+    {
+      "id": "SAMPLE-DPL-0001",
+      "name": "Javier Dominguez Corredoira",
+      "alt_names": [],
+      "source": "Denied Persons List (DPL) - Bureau of Industry and Security",
+      "type": "Individual",
+      "list_type": "DPL",
+      "country": "ES",
+      "programs": ["Export Violations"],
+      "source_information_url": "https://www.bis.doc.gov/index.php/policy-guidance/lists-of-parties-of-concern/denied-persons-list"
+    },
+    {
+      "id": "SAMPLE-DTC-0001",
+      "name": "Global Defense Solutions Inc.",
+      "alt_names": ["GDS Inc", "Global Defense Solutions"],
+      "source": "AECA Debarred List - State Department",
+      "type": "Entity",
+      "list_type": "DTC",
+      "country": "US",
+      "programs": ["AECA Debarment"],
+      "source_information_url": "https://www.pmddtc.state.gov/ddtc_public?id=ddtc_kb_article_page&sys_id=c22d1833dbb8d300d0a370131f9619f0"
+    },
+    {
+      "id": "SAMPLE-SSI-0001",
+      "name": "Gazprombank Joint Stock Company",
+      "alt_names": ["Gazprombank", "JSC Gazprombank"],
+      "source": "Sectoral Sanctions Identifications List (SSI) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SSI",
+      "country": "RU",
+      "programs": ["UKRAINE-EO13662"],
+      "source_information_url": "https://home.treasury.gov/policy-issues/financial-sanctions/sectoral-sanctions-identifications-list"
+    },
+    {
+      "id": "SAMPLE-SDN-0005",
+      "name": "Islamic Revolutionary Guard Corps",
+      "alt_names": ["IRGC", "Sepah Pasdaran"],
+      "source": "Specially Designated Nationals (SDN) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SDN",
+      "country": "IR",
+      "programs": ["IRAN", "SDGT", "IFSR"],
+      "source_information_url": "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=00005"
+    },
+    {
+      "id": "SAMPLE-SDN-0006",
+      "name": "Cuban Medical Supplies Export Company",
+      "alt_names": ["CMSEC", "Cubamed"],
+      "source": "Specially Designated Nationals (SDN) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SDN",
+      "country": "CU",
+      "programs": ["CUBA"],
+      "source_information_url": "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=00006"
+    },
+    {
+      "id": "SAMPLE-SDN-0007",
+      "name": "Venezuelan Oil Trading Corporation",
+      "alt_names": ["VOTC", "PDVSA Sample"],
+      "source": "Specially Designated Nationals (SDN) - Treasury Department",
+      "type": "Entity",
+      "list_type": "SDN",
+      "country": "VE",
+      "programs": ["VENEZUELA"],
+      "source_information_url": "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=00007"
+    }
+  ]
+}
