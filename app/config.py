@@ -21,11 +21,15 @@ class Settings(BaseSettings):
             "/v1/consolidated.json"
         ),
     )
-    csl_refresh_seconds: int = 24 * 60 * 60
-    csl_http_timeout: int = 60
+    csl_http_timeout: int = 90
+    csl_sample_path: str = ""
 
     # Force bundled sample data (no network)
     use_sample_only: bool = False
+
+    # Per-source toggles (disable one to run without its network call).
+    enable_source_us_csl: bool = True
+    enable_source_un: bool = True
 
     # Scoring thresholds
     match_min_score: float = 0.82

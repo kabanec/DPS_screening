@@ -29,10 +29,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.config import settings
 from app.routers import meta, screening
+from app.dps_sources.un_sc import UNSCAdapter
+from app.dps_sources.us_csl import USCSLAdapter
 from app.services.dps_service import DPSService
 from app.services.source_registry import SourceAdapter, SourceRegistry
-from dps_sources.un_sc import UNSCAdapter
-from dps_sources.us_csl import USCSLAdapter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 class _AdapterShim:
-    """Wraps a shared dps_sources adapter to expose dps-poc SourceAdapter fields."""
+    """Wraps a dps_sources adapter to expose dps-poc SourceAdapter fields."""
 
     def __init__(self, inner: Any, *, name: str) -> None:
         self._inner = inner
@@ -143,7 +143,7 @@ app = FastAPI(
         "source failing does not abort the others. Per-source health is "
         "surfaced on `/health` and `/v1/lists`."
     ),
-    contact={"name": "TradeShield / DPS POC"},
+    contact={"name": "DPS POC"},
     license_info={"name": "MIT"},
     lifespan=lifespan,
 )

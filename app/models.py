@@ -142,19 +142,50 @@ class CheckBatchResponse(BaseModel):
 # ── Meta ────────────────────────────────────────────────────────────────
 
 class ListSummary(BaseModel):
-    """Row-count summary for a single source list inside the CSL feed."""
+    """Row-count summary for a single source list (e.g. 'OFAC SDN')."""
 
     source: str
     entry_count: int
 
 
-class ListsResponse(BaseModel):
-    """Metadata about the currently loaded CSL dataset."""
+class AdapterSummary(BaseModel):
+    """Load status + freshness for one adapter (US_CSL, UN, UK_OFSI, …)."""
 
-    data_source: str = Field(description="'live_csl' or 'sample'.")
-    loaded_at: str = Field(description="ISO-8601 timestamp of when the data was loaded.")
+    short_code: str = Field(description="Adapter short code, e.g. 'US_CSL', 'UN'.")
+    name: str = Field(description="Human-readable adapter name.")
+    status: str = Field(
+        description=(
+            "'live_csl' / 'live_un' / 'sample' / 'failed' / 'disabled' / "
+            "'uninitialized' — mirrors the adapter's `data_source` field."
+        ),
+    )
+    entry_count: int
+    loaded_at: Optional[str] = Field(
+        default=None,
+        description="ISO-8601 timestamp of the most recent successful load.",
+    )
+
+
+class ListsResponse(BaseModel):
+    """Metadata about every loaded denied-party list."""
+
+    data_source: str = Field(
+        description=(
+            "Rollup: 'multi_source' when 2+ adapters loaded data, otherwise "
+            "the single adapter's status (e.g. 'live_csl', 'sample', 'failed')."
+        ),
+    )
+    loaded_at: str = Field(
+        description="ISO-8601 timestamp — earliest successful load across adapters.",
+    )
     total_entries: int
-    lists: List[ListSummary]
+    adapters: List[AdapterSummary] = Field(
+        default_factory=list,
+        description="Per-adapter load status and freshness.",
+    )
+    lists: List[ListSummary] = Field(
+        description="Per-source-list row counts (grouped by entry['source']).",
+    )
 
 
 class HealthResponse(BaseModel):
