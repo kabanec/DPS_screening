@@ -74,21 +74,23 @@ The UN list covers the 1267 (Al-Qaida/Daesh), 1988 (Taliban), and 1540
 (WMD proliferation) regimes and contains **both Individuals and Entities**
 with their aliases, references, and native country attribution.
 
-### 2.2 Sources architected for (adapter drop-in)
+### 2.2 Sources bundled, wiring pending
 
-The `SourceAdapter` protocol + `SourceRegistry` make adding a new list a
-three-step drop-in (write the adapter, instantiate in `main.py`, toggle in
-config). No changes to the matcher or screening service are required.
+Adapters for six more jurisdictions are **already implemented and shipped
+in `app/dps_sources/`**. They are not wired into the default registry yet
+— enabling each is a two-line change in `main.py` (`_build_registry()`)
+plus a toggle in `app/config.py`. No changes to the matcher or screening
+service are required.
 
-| Jurisdiction | List | Feed | Effort |
-|---|---|---|---|
-| 🇬🇧 UK HM Treasury | OFSI Consolidated List | CSV / XML (public) | ~half day |
-| 🇪🇺 European Union | CFSP Consolidated List | XML (EU FSD, free with registration) | ~1 day |
-| 🇨🇦 Canada | OSFI Consolidated + SEMA | XML (public) | ~half day |
-| 🇦🇺 Australia | DFAT Consolidated List | XLSX (public) | ~half day |
-| 🇨🇭 Switzerland | SECO SESAM | XML (public) | ~half day |
-| 🇯🇵 Japan | METI End-User List | HTML/PDF (scrape) | ~1 day |
-| 🌐 Aggregated | OpenSanctions.org (optional commercial) | JSON API | — (pay per seat) |
+| Jurisdiction | List | Feed | Adapter module | short_code |
+|---|---|---|---|---|
+| 🇬🇧 UK HM Treasury | OFSI Consolidated List | CSV / XML (public) | `app/dps_sources/uk_ofsi.py` | `UK_OFSI` |
+| 🇪🇺 European Union | CFSP Consolidated List | XML (EU FSD, public token) | `app/dps_sources/eu_cfsp.py` | `EU_CFSP` |
+| 🇨🇦 Canada | OSFI Consolidated + SEMA | XML (public) | `app/dps_sources/ca_osfi.py` | `CA_OSFI` |
+| 🇦🇺 Australia | DFAT Consolidated List | XLSX (public) | `app/dps_sources/au_dfat.py` | `AU_DFAT` |
+| 🇨🇭 Switzerland | SECO SESAM | XML (public) | `app/dps_sources/ch_seco.py` | `CH_SECO` |
+| 🇯🇵 Japan | METI Foreign User List | HTML → PDF (scrape) | `app/dps_sources/jp_meti.py` | `JP_METI` |
+| 🌐 Aggregated | OpenSanctions.org (optional commercial) | JSON API | *(not implemented)* | — |
 
 Each adapter is independent — a failure on one source does not abort the
 others. Per-source health is surfaced on `/health` and `/v1/lists`.
@@ -144,7 +146,7 @@ loaded source in one pass.
 
 ```
 ┌─────────────────────────┐  ┌─────────────────────────┐
-│  Trade.gov CSL JSON     │  │  UN SC Consolidated XML │   ← sources wired today
+│  Trade.gov CSL JSON     │  │  UN SC Consolidated XML │   ← wired today
 └────────────┬────────────┘  └────────────┬────────────┘
              │                            │
              │    (async, concurrent      │
@@ -152,8 +154,9 @@ loaded source in one pass.
              ▼                            ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                       SourceRegistry                         │
-│   (duck-typed adapter contract — UK/EU/CA/AU/CH/JP drop in   │
-│    here without matcher or service changes)                  │
+│   (duck-typed adapter contract. UK/EU/CA/AU/CH/JP adapters   │
+│    already ship in app/dps_sources/ — enable by instantiating│
+│    them in _build_registry(); no matcher or service changes) │
 └──────────────────────────┬───────────────────────────────────┘
                            │ .get_entries() — flat, normalized
                            ▼
@@ -471,7 +474,7 @@ dps-poc/
 ├── .gitignore
 └── app/
     ├── __init__.py                # __version__
-    ├── main.py                    # FastAPI app + lifespan + router registration
+    ├── main.py                    # FastAPI app + lifespan + _build_registry()
     ├── config.py                  # Settings (pydantic-settings)
     ├── models.py                  # Pydantic request/response models
     ├── data/
@@ -479,13 +482,28 @@ dps-poc/
     ├── routers/
     │   ├── screening.py           # /v1/check-party, /v1/check-batch
     │   └── meta.py                # /health, /v1/lists
+    ├── dps_sources/               # Self-contained source adapter package
+    │   ├── __init__.py            # exports SourceAdapter, SourceRegistry, normalize_entry
+    │   ├── base.py                # Protocol, registry, fetch_with_fallback helper
+    │   ├── us_csl.py              # US Consolidated Screening List (Trade.gov JSON)
+    │   ├── un_sc.py               # UN Security Council (XML)
+    │   ├── uk_ofsi.py             # UK OFSI (XML)
+    │   ├── eu_cfsp.py             # EU CFSP (XML)
+    │   ├── ca_osfi.py             # Canada OSFI (XML)
+    │   ├── au_dfat.py             # Australia DFAT (XLSX)
+    │   ├── ch_seco.py             # Switzerland SECO (XML)
+    │   └── jp_meti.py             # Japan METI Foreign User List (PDF)
     └── services/
-        ├── source_registry.py     # Multi-adapter registry + SourceAdapter protocol
-        ├── csl_client.py          # US CSL adapter (Trade.gov JSON)
-        ├── un_client.py           # UN SC Consolidated adapter (XML)
+        ├── source_registry.py     # POC-local SourceAdapter protocol + registry wrapper
         ├── matcher.py             # normalize_name + score_pair + find_matches
         └── dps_service.py         # Orchestration + classification (source-agnostic)
 ```
+
+Note: `app/dps_sources/` ships its own lightweight `SourceAdapter`
+protocol in `base.py`. `app/main.py` wraps each bundled adapter in a thin
+`_AdapterShim` so it satisfies the POC's own `app/services/source_registry.py`
+contract. This indirection lets you swap the adapter package out for any
+equivalent implementation without touching the matcher or routers.
 
 ---
 
@@ -550,7 +568,7 @@ This POC is intentionally minimal. To harden for production use:
 | CORS | Wide open. | Lock to specific origins per deployment. |
 | Deployment | `python run.py`. | Docker image + Render.com / ECS / Cloud Run. |
 | Test suite | None in this POC. | `pytest` with fixtures for the sample dataset + per-adapter contract tests + OpenAPI schema tests. |
-| Source coverage | US CSL + UN. | + UK OFSI, EU CFSP, Canada OSFI, Australia DFAT, Switzerland SECO, Japan METI (all adapter drop-in). |
+| Source coverage | US CSL + UN wired in the default registry. | Enable UK OFSI, EU CFSP, Canada OSFI, Australia DFAT, Switzerland SECO, Japan METI — all adapters already ship under `app/dps_sources/`; each takes ~2 lines in `_build_registry()` plus a toggle in `config.py`. |
 
 The code layout is organised so each of these is a drop-in addition —
 middleware for auth and rate limiting, a background task for refresh,
