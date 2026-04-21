@@ -3,30 +3,36 @@ FastAPI application entry point.
 
 Exposes:
 
-  * POST /v1/check-party   — screen one party
+  * POST /v1/check-party   — screen one party against all enabled lists
   * POST /v1/check-batch   — screen up to 100 parties
-  * GET  /v1/lists         — metadata on loaded data
+  * GET  /v1/lists         — per-source metadata (status, counts, freshness)
   * GET  /health           — liveness/readiness probe
   * GET  /docs             — Swagger UI (auto-generated)
   * GET  /redoc            — ReDoc UI (auto-generated)
   * GET  /openapi.json     — machine-readable OpenAPI 3.1 spec
 
-On startup the app downloads the CSL bulk feed from data.trade.gov into
-memory. If the download fails the bundled sample dataset is used so the
-API stays responsive for demos.
+On startup the app concurrently loads every enabled denied-party list
+(US CSL bulk feed, UN Security Council Consolidated List, …) into memory
+via a shared SourceRegistry. A failure on one source does not abort the
+others — callers see degraded per-source status in /v1/lists and /health.
 """
 
 import logging
-
 from contextlib import asynccontextmanager
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.config import settings
 from app.routers import meta, screening
-from app.services.csl_client import CSLClient
 from app.services.dps_service import DPSService
+from app.services.source_registry import SourceAdapter, SourceRegistry
+from dps_sources.un_sc import UNSCAdapter
+from dps_sources.us_csl import USCSLAdapter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,17 +41,80 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+class _AdapterShim:
+    """Wraps a shared dps_sources adapter to expose dps-poc SourceAdapter fields."""
+
+    def __init__(self, inner: Any, *, name: str) -> None:
+        self._inner = inner
+        self.short_code: str = inner.short_code
+        self.name: str = name
+        self._loaded_at: Optional[datetime] = None
+
+    async def load(self) -> None:
+        await self._inner.load()
+        self._loaded_at = datetime.utcnow()
+
+    def get_entries(self) -> List[Dict[str, Any]]:
+        out = []
+        for e in self._inner.get_entries():
+            entry = dict(e)
+            # dps-poc matcher reads "source"; shared adapters use "source_list"
+            if "source" not in entry:
+                entry["source"] = entry.get("source_list", self.short_code)
+            out.append(entry)
+        return out
+
+    @property
+    def data_source(self) -> str:
+        if not self._loaded_at:
+            return "failed"
+        return "live_feed" if self._inner.get_entries() else "failed"
+
+    @property
+    def loaded_at(self) -> Optional[datetime]:
+        return self._loaded_at
+
+
+def _build_registry() -> SourceRegistry:
+    """Instantiate the enabled adapters based on config toggles."""
+    adapters: List[SourceAdapter] = []
+    if settings.enable_source_us_csl:
+        sample_path = Path(settings.csl_sample_path) if settings.csl_sample_path else None
+        adapters.append(_AdapterShim(
+            USCSLAdapter(
+                feed_url=settings.csl_bulk_url,
+                timeout=float(settings.csl_http_timeout),
+                use_sample_only=settings.use_sample_only,
+                sample_path=sample_path,
+            ),
+            name="US Consolidated Screening List",
+        ))
+    if settings.enable_source_un:
+        adapters.append(_AdapterShim(
+            UNSCAdapter(),
+            name="UN Security Council Consolidated List",
+        ))
+    if not adapters:
+        logger.warning(
+            "No source adapters enabled — /v1/check-party will return "
+            "'passed' for every input. Enable at least one source."
+        )
+    return SourceRegistry(adapters)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load the CSL dataset once at startup, release at shutdown."""
+    """Load every enabled denied-party list concurrently at startup."""
     logger.info("DPS POC %s starting up", __version__)
-    csl_client = CSLClient()
-    await csl_client.load()
-    app.state.csl_client = csl_client
-    app.state.dps_service = DPSService(csl_client)
+    registry = _build_registry()
+    await registry.load_all()
+    app.state.sources = registry
+    app.state.dps_service = DPSService(registry)
     logger.info(
-        "Ready — serving from %s with %d entries",
-        csl_client.data_source, len(csl_client.get_entries()),
+        "Ready — serving %d entries across %d source(s) (rollup=%s)",
+        len(registry.get_entries()),
+        len(registry.per_source_summary()),
+        registry.data_source,
     )
     yield
     logger.info("DPS POC shutting down")
@@ -56,17 +125,23 @@ app = FastAPI(
     version=__version__,
     description=(
         "A standalone proof-of-concept Denied Party Screening API. Screens "
-        "supplier / buyer / manufacturer / IOR / ship-to names against the "
-        "US government's Consolidated Screening List (OFAC SDN, BIS Entity "
-        "List, BIS Denied Persons, DDTC Debarred, Treasury SSI, and more). "
-        "Ships with a live Trade.gov bulk feed plus a bundled sample dataset "
-        "for offline demos.\n\n"
-        "**Data source:** "
-        "[data.trade.gov/downloadable_consolidated_screening_list]"
-        "(https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.json)"
-        " — public, no API key required.\n\n"
+        "legal entities **and** natural persons — supplier, buyer, "
+        "manufacturer, IOR, ship-to — against multiple government sanctions "
+        "lists through a single, normalized interface.\n\n"
+        "**Sources wired today:**\n"
+        "- US Consolidated Screening List (Trade.gov bulk feed) — OFAC SDN, "
+        "BIS Entity List, BIS Denied Persons, DDTC Debarred, Treasury SSI, "
+        "and 7 more US lists.\n"
+        "- UN Security Council Consolidated Sanctions List "
+        "(scsanctions.un.org XML feed) — 1267 / 1988 / 1540 regimes.\n\n"
+        "**Sources architected for (adapter drop-in):** UK OFSI, EU CFSP, "
+        "Canada OSFI, Australia DFAT, Switzerland SECO, Japan METI.\n\n"
         "**Matching:** rapidfuzz token-set ratio over normalized names "
-        "(lowercased, accent-folded, legal-suffix-stripped)."
+        "(lowercased, accent-folded, legal-suffix-stripped). Same scoring "
+        "for Individuals and Entities — the matcher is type-agnostic.\n\n"
+        "**Resilience:** every source loads concurrently at startup; one "
+        "source failing does not abort the others. Per-source health is "
+        "surfaced on `/health` and `/v1/lists`."
     ),
     contact={"name": "TradeShield / DPS POC"},
     license_info={"name": "MIT"},

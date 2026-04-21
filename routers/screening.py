@@ -28,14 +28,16 @@ def get_dps_service() -> DPSService:
 @router.post(
     "/check-party",
     response_model=CheckPartyResponse,
-    summary="Screen a single party against the Consolidated Screening List",
+    summary="Screen a single party against every loaded denied-party list",
     description=(
-        "Runs the supplied party name against every entry in the in-memory "
-        "CSL (OFAC SDN, BIS Entity List, BIS Denied Persons, DDTC Debarred, "
-        "Treasury SSI, etc.) using fuzzy token-set matching. Returns all "
-        "matches at or above MATCH_MIN_SCORE, classifies the aggregate result "
-        "as `passed` / `manual_review` / `failed`, and flags whether human "
-        "review is required."
+        "Runs the supplied name (company, vessel, or natural person) against "
+        "every in-memory entry across every enabled source — US CSL (OFAC "
+        "SDN, BIS Entity List, BIS Denied Persons, DDTC Debarred, Treasury "
+        "SSI, …), UN Security Council Consolidated List, and any other "
+        "adapters wired into the registry — using fuzzy token-set matching. "
+        "Returns all matches at or above MATCH_MIN_SCORE, classifies the "
+        "aggregate result as `passed` / `manual_review` / `failed`, and "
+        "flags whether human review is required."
     ),
     responses={
         200: {

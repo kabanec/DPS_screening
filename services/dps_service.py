@@ -26,22 +26,30 @@ from app.models import (
     CheckPartyResponse,
     Match,
 )
-from app.services.csl_client import CSLClient
 from app.services.matcher import find_matches
 
 logger = logging.getLogger(__name__)
 
 
 class DPSService:
-    def __init__(self, csl_client: CSLClient) -> None:
-        self.csl = csl_client
+    """
+    Screening orchestrator.
+
+    `sources` is duck-typed — it just needs `.get_entries() -> List[Dict]`
+    and `.data_source -> str`. Both the single CSLClient and the multi-
+    source SourceRegistry satisfy that contract, so the service layer is
+    source-agnostic.
+    """
+
+    def __init__(self, sources) -> None:
+        self.sources = sources
 
     # ── single ───────────────────────────────────────────────────────
 
     def check_party(self, req: CheckPartyRequest) -> CheckPartyResponse:
         raw = find_matches(
             req.name,
-            self.csl.get_entries(),
+            self.sources.get_entries(),
             min_score=settings.match_min_score,
         )
 
@@ -63,7 +71,7 @@ class DPSService:
             requires_manual_review=status in ("manual_review", "failed"),
             matches=matches,
             screened_at=datetime.now(timezone.utc).isoformat(),
-            data_source=self.csl.data_source,
+            data_source=self.sources.data_source,
         )
 
     # ── batch ────────────────────────────────────────────────────────
